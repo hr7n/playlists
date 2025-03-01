@@ -40,6 +40,10 @@ const router = createBrowserRouter([
         path: '/Signup',
         element: <Signup />,
       },
+      {
+        path: '/spotify-callback',
+        element: <SpotifyCallback />,
+      },
     ],
   },
 ]);

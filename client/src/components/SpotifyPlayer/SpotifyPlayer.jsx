@@ -1,33 +1,33 @@
-import React, { useEffect, useState } from "react";
-import "./SpotifyPlayer.css"; // Ensure this file contains the necessary styles
-import getSpotifyToken from "../../utils/spotify-token";
+import React, { useEffect, useState } from 'react';
+import './SpotifyPlayer.css'; // Ensure this file contains the necessary styles
+import getSpotifyToken from '../../utils/spotify-token';
 
 const SpotifyPlayer = () => {
   const [player, setPlayer] = useState(null);
   const [currentTrack, setCurrentTrack] = useState({
-    albumImageUrl: "", // Placeholder for album image URL
-    title: "Track Title", // Placeholder for track title
-    artist: "Track Artist", // Placeholder for artist name
+    albumImageUrl: '', // Placeholder for album image URL
+    title: 'Track Title', // Placeholder for track title
+    artist: 'Track Artist', // Placeholder for artist name
   });
 
   useEffect(() => {
     getSpotifyToken().then((accessToken) => {
-      console.log("accessToken", accessToken);
-      const script = document.createElement("script");
-      script.src = "https://sdk.scdn.co/spotify-player.js";
+      console.log('accessToken', accessToken);
+      const script = document.createElement('script');
+      script.src = 'https://sdk.scdn.co/spotify-player.js';
       script.async = true;
       document.body.appendChild(script);
 
       window.onSpotifyWebPlaybackSDKReady = () => {
         const spotifyPlayer = new window.Spotify.Player({
-          name: "Web Playback SDK Quick Start Player",
+          name: 'Web Playback SDK Quick Start Player',
           getOAuthToken: (cb) => {
             cb(accessToken);
           },
         });
 
         // Event listeners for player state
-        spotifyPlayer.addListener("player_state_changed", (state) => {
+        spotifyPlayer.addListener('player_state_changed', (state) => {
           if (state) {
             const { track_window, paused } = state;
             const { current_track } = track_window;
@@ -37,7 +37,7 @@ const SpotifyPlayer = () => {
             const title = current_track.name;
             const artist = current_track.artists
               .map((artist) => artist.name)
-              .join(", ");
+              .join(', ');
 
             setCurrentTrack({
               albumImageUrl,
@@ -48,13 +48,13 @@ const SpotifyPlayer = () => {
         });
 
         // Ready
-        spotifyPlayer.addListener("ready", ({ device_id }) => {
-          console.log("Ready with Device ID", device_id);
+        spotifyPlayer.addListener('ready', ({ device_id }) => {
+          console.log('Ready with Device ID', device_id);
         });
 
         // Not Ready
-        spotifyPlayer.addListener("not_ready", ({ device_id }) => {
-          console.log("Device ID has gone offline", device_id);
+        spotifyPlayer.addListener('not_ready', ({ device_id }) => {
+          console.log('Device ID has gone offline', device_id);
         });
 
         setPlayer(spotifyPlayer);
@@ -66,13 +66,13 @@ const SpotifyPlayer = () => {
   // Example control functions
   const play = () => {
     player.resume().then(() => {
-      console.log("Resumed!");
+      console.log('Resumed!');
     });
   };
 
   const pause = () => {
     player.pause().then(() => {
-      console.log("Paused!");
+      console.log('Paused!');
     });
   };
 
