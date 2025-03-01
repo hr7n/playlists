@@ -1,96 +1,132 @@
 import React, { useEffect, useState } from 'react';
-import './SpotifyPlayer.css'; // Ensure this file contains the necessary styles
-import getSpotifyToken from '../../utils/spotify-token';
+import './SpotifyPlayer.css';
+import { getAccessToken } from '../../utils/spotify';
 
-const SpotifyPlayer = () => {
+const SpotifyPlayer = ({ tracks = [], autoplay = false }) => {
+  const [deviceId, setDeviceId] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playerReady, setPlayerReady] = useState(false);
+  const [error, setError] = useState(null);
+
   const [player, setPlayer] = useState(null);
   const [currentTrack, setCurrentTrack] = useState({
-    albumImageUrl: '', // Placeholder for album image URL
-    title: 'Track Title', // Placeholder for track title
-    artist: 'Track Artist', // Placeholder for artist name
+    albumImageUrl: '',
+    title: 'Track Title',
+    artist: 'Track Artist',
   });
 
   useEffect(() => {
-    getSpotifyToken().then((accessToken) => {
-      console.log('accessToken', accessToken);
-      const script = document.createElement('script');
-      script.src = 'https://sdk.scdn.co/spotify-player.js';
-      script.async = true;
-      document.body.appendChild(script);
+    const initializePlayer = async () => {
+      try {
+        const token = await getAccessToken();
+        if (!token) {
+          setError('No Spotify access token found. Please log in to Spotify.');
+          return;
+        }
+      } catch (err) {
+        setError('Failed to initialize Spotify player. Please try again.');
+      }
+    };
 
-      window.onSpotifyWebPlaybackSDKReady = () => {
-        const spotifyPlayer = new window.Spotify.Player({
-          name: 'Web Playback SDK Quick Start Player',
-          getOAuthToken: (cb) => {
-            cb(accessToken);
-          },
-        });
-
-        // Event listeners for player state
-        spotifyPlayer.addListener('player_state_changed', (state) => {
-          if (state) {
-            const { track_window, paused } = state;
-            const { current_track } = track_window;
-
-            // Extract track information from state
-            const albumImageUrl = current_track.album.images[0].url;
-            const title = current_track.name;
-            const artist = current_track.artists
-              .map((artist) => artist.name)
-              .join(', ');
-
-            setCurrentTrack({
-              albumImageUrl,
-              title,
-              artist,
-            });
-          }
-        });
-
-        // Ready
-        spotifyPlayer.addListener('ready', ({ device_id }) => {
-          console.log('Ready with Device ID', device_id);
-        });
-
-        // Not Ready
-        spotifyPlayer.addListener('not_ready', ({ device_id }) => {
-          console.log('Device ID has gone offline', device_id);
-        });
-
-        setPlayer(spotifyPlayer);
-        spotifyPlayer.connect();
-      };
-    });
+    initializePlayer();
   }, []);
 
-  // Example control functions
-  const play = () => {
-    player.resume().then(() => {
-      console.log('Resumed!');
-    });
+  SpotifyPlayer.addListener('ready', ({ device_id }) => {
+    console.log('Ready with Device ID', device_id);
+    setDeviceId(device_id);
+    setPlayerReady(true);
+  });
+
+  SpotifyPlayer.addListener('initialization_error', ({ message }) => {
+    setError(`Failed to initialize: ${message}`);
+  });
+
+  SpotifyPlayer.addListener('authentication_error', ({ message }) => {
+    setError(`Failed to authenticate: ${message}`);
+  });
+
+  SpotifyPlayer.addListener('account_error', ({ message }) => {
+    setError(`Premium required: ${message}`);
+  });
+
+  const play = async () => {
+    if (!player || !deviceId) {
+      try {
+        await player.resume();
+        setIsPlaying(true);
+      } catch (err) {
+        setError('Failed to play. Please try again.');
+      }
+    }
   };
 
-  const pause = () => {
-    player.pause().then(() => {
-      console.log('Paused!');
-    });
+  const pause = async () => {
+    if (!player) return;
+    try {
+      await player.pause();
+      setIsPlaying(false);
+    } catch (err) {
+      setError('Failed to pause track.');
+    }
   };
 
-  // Render player controls
+  const nextTrack = async () => {
+    if (!player) return;
+    try {
+      await player.nextTrack();
+    } catch (err) {
+      setError('Failed to skip track.');
+    }
+  };
+
+  const previousTrack = async () => {
+    if (!player) return;
+    try {
+      await player.previousTrack();
+    } catch (err) {
+      setError('Failed to go back.');
+    }
+  };
+
   return (
     <div className="player-container">
-      <div className="img-container">
-        <img src={currentTrack.albumImageUrl} alt="Album Art" />
-      </div>
-      <div className="track-info">
-        <h2 id="title">{currentTrack.title}</h2>
-        <h3 id="artist">{currentTrack.artist}</h3>
-      </div>
-      <div className="spotify-controls">
-        <button onClick={play}>Play</button>
-        <button onClick={pause}>Pause</button>
-        {/* Add more controls as needed */}
-      </div>
+      {error ? (
+        <div className="error-message">{error}</div>
+      ) : (
+        <>
+          <div className="img-container">
+            {currentTrack.albumImageUrl ? (
+              <img src={currentTrack.albumImageUrl} alt="Album Art" />
+            ) : (
+              <div className="placeholder-image">No Image</div>
+            )}
+          </div>
+          <div className="track-info">
+            <h2 id="title">{currentTrack.title}</h2>
+            <h3 id="artist">{currentTrack.artist}</h3>
+          </div>
+          <div className="spotify-controls">
+            <button onClick={previousTrack} disable={!playerReady}>
+              Previous
+            </button>
+            {isPlaying ? (
+              <button onClick={pause} disabled={!playerReady}>
+                Pause
+              </button>
+            ) : (
+              <button onClick={play} disabled={!playerReady}>
+                Play
+              </button>
+            )}
+            <button onClick={nextTrack} disabled={!playerReady}>
+              Next
+            </button>
+          </div>
+          {!playerReady && (
+            <div className="status-message">Connecting to Spotify...</div>
+          )}
+        </>
+      )}
     </div>
   );
 };
