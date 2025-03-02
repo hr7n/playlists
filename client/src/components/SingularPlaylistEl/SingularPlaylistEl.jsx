@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@apollo/client';
 import { GET_PLAYLIST } from '../../utils/query';
+import { FaPlay, FaPause } from 'react-icons/fa';
 
 import './singularPlaylist.css';
 
 const SingularPlaylistEl = () => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentPlaylistId, setCurrentPlaylistId] = useState(null);
   // const songs = [
   //   "Good Song",
   //   "Better Song",
@@ -30,6 +33,18 @@ const SingularPlaylistEl = () => {
     console.log('PLAYLISTS', playlists);
   }
 
+  const handlePlayClick = async (e, playlist) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      setCurrentPlaylistId(playlist._id);
+      setIsPlaying(true);
+    } catch (error) {
+      console.error('Error playing playlist:', error);
+      setIsPlaying(false);
+    }
+  };
   // const { data: userData } = useQuery(GET_USER_EMAIL);
   // let userEmail;
   // if (userData) {
@@ -69,6 +84,16 @@ const SingularPlaylistEl = () => {
                 </div>
               </div>
             </Link>
+            <button
+              className="play-button"
+              onClick={(e) => handlePlayClick(e, playlist)}
+            >
+              {currentPlaylistId === playlist._id && isPlaying ? (
+                <FaPause />
+              ) : (
+                <FaPlay />
+              )}
+            </button>
           </>
         ))}
     </>

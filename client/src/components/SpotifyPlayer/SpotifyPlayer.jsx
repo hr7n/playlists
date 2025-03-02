@@ -7,7 +7,6 @@ const SpotifyPlayer = ({ tracks = [], autoplay = false }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
   const [error, setError] = useState(null);
-
   const [player, setPlayer] = useState(null);
   const [currentTrack, setCurrentTrack] = useState({
     albumImageUrl: '',
@@ -16,6 +15,12 @@ const SpotifyPlayer = ({ tracks = [], autoplay = false }) => {
   });
 
   useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://sdk.scdn.co/spotify-player.js';
+    script.async = true;
+
+    document.body.appendChild(script);
+
     const initializePlayer = async () => {
       try {
         const token = await getAccessToken();
@@ -23,40 +28,61 @@ const SpotifyPlayer = ({ tracks = [], autoplay = false }) => {
           setError('No Spotify access token found. Please log in to Spotify.');
           return;
         }
+
+        window.onSpotifyWebPlaybackSDKReady = () => {
+          const spotifyPlayer = new window.Spotify.Player({
+            name: 'Spotify Web Playback SDK',
+            getOAuthToken: (cb) => {
+              cb(token);
+            },
+          });
+
+          spotifyPlayer.addListener('ready', ({ device_id }) => {
+            console.log('Ready with Device ID', device_id);
+            setDeviceId(device_id);
+            setPlayerReady(true);
+          });
+
+          spotifyPlayer.addListener('initialization_error', ({ message }) => {
+            setError(`Failed to initialize: ${message}`);
+          });
+
+          spotifyPlayer.addListener('authentication_error', ({ message }) => {
+            setError(`Failed to authenticate: ${message}`);
+          });
+
+          spotifyPlayer.addListener('account_error', ({ message }) => {
+            setError(`Premium required: ${message}`);
+          });
+
+          spotifyPlayer.connect().then((success) => {
+            if (success) {
+              setPlayer(spotifyPlayer);
+            }
+          });
+        };
       } catch (err) {
         setError('Failed to initialize Spotify player. Please try again.');
       }
     };
 
     initializePlayer();
+
+    return () => {
+      document.body.removeChild(script);
+      if (player) {
+        player.disconnect();
+      }
+    };
   }, []);
 
-  SpotifyPlayer.addListener('ready', ({ device_id }) => {
-    console.log('Ready with Device ID', device_id);
-    setDeviceId(device_id);
-    setPlayerReady(true);
-  });
-
-  SpotifyPlayer.addListener('initialization_error', ({ message }) => {
-    setError(`Failed to initialize: ${message}`);
-  });
-
-  SpotifyPlayer.addListener('authentication_error', ({ message }) => {
-    setError(`Failed to authenticate: ${message}`);
-  });
-
-  SpotifyPlayer.addListener('account_error', ({ message }) => {
-    setError(`Premium required: ${message}`);
-  });
-
   const play = async () => {
-    if (!player || !deviceId) {
-      try {
-        await player.resume();
-        setIsPlaying(true);
-      } catch (err) {
-        setError('Failed to play. Please try again.');
-      }
+    if (!player || !deviceId) return;
+    try {
+      await player.resume();
+      setIsPlaying(true);
+    } catch (err) {
+      setError('Failed to play. Please try again.');
     }
   };
 
@@ -106,7 +132,7 @@ const SpotifyPlayer = ({ tracks = [], autoplay = false }) => {
             <h3 id="artist">{currentTrack.artist}</h3>
           </div>
           <div className="spotify-controls">
-            <button onClick={previousTrack} disable={!playerReady}>
+            <button onClick={previousTrack} disabled={!playerReady}>
               Previous
             </button>
             {isPlaying ? (

@@ -7,7 +7,7 @@ const SpotifyCallback = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const urlParams = URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('access_token');
 
     if (token) {

@@ -2,6 +2,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import SpotifyCallback from './pages/SpotifyCallback.jsx';
 
 import Home from './pages/Home.jsx';
 import Login from './pages/Login/Login.jsx';
